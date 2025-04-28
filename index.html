@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Calculateur de Vol</title>
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/84/84436.png">
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
   <style>
     * { box-sizing: border-box; }
     body {
@@ -161,14 +164,19 @@
 <div class="card">
   <label for="nom_depart">Nom de l'aérodrome de départ :</label>
   <input type="text" id="nom_depart">
+
   <label for="alt_a">Altitude de départ (m) :</label>
   <input type="number" id="alt_a">
+
   <label for="finesse">Finesse du planeur :</label>
   <input type="number" id="finesse">
+
   <label for="nom_arrivee">Nom de l'aérodrome d'arrivée :</label>
   <input type="text" id="nom_arrivee">
+
   <label for="alt_b">Altitude d'arrivée (m) :</label>
   <input type="number" id="alt_b">
+
   <label for="dist">Distance entre aérodromes (km) :</label>
   <input type="number" id="dist">
 
@@ -185,6 +193,7 @@
     <canvas id="graphique"></canvas>
     <button class="btn-fullscreen" onclick="toggleFullscreen()">Grossir</button>
   </div>
+
   <div class="table-container">
     <div id="tableau"></div>
   </div>
@@ -275,7 +284,6 @@ async function telechargerPDF() {
   pdf.text(`Distance: ${dist} km`, 10, 50);
   pdf.text(result, 10, 60);
 
-  // Ajouter le tableau
   const table = document.getElementById('tableau').querySelector('table');
   if (table) {
     const headers = [];
@@ -294,7 +302,6 @@ async function telechargerPDF() {
     });
   }
 
-  // Ajouter le graphique en dessous
   const canvas = document.getElementById('graphique');
   const imgData = canvas.toDataURL('image/png');
   let finalY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 10 : 140;
@@ -306,4 +313,3 @@ async function telechargerPDF() {
 
 </body>
 </html>
-
