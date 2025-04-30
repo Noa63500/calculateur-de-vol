@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Calculateur de Vol</title>
-  <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon-192.png" sizes="192x192" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -23,33 +22,19 @@
 
   <h1 class="text-3xl text-center font-bold mt-4 mb-2">Calculateur de Vol</h1>
 
-  <h2 class="text-xl text-center font-semibold mt-6 mb-2">🗺️ Carte des aérodromes</h2>
-  <div id="map" class="max-w-5xl mx-auto h-[400px] sm:h-[500px] rounded-xl shadow-xl border border-white"></div>
+  <div id="map" class="max-w-5xl mx-auto h-[500px] rounded-xl shadow-xl border border-white"></div>
 
-  <div class="text-center mt-3 mb-6">
-    <select id="mapStyle" onchange="switchMapStyle()" class="p-2 border rounded text-sm">
-      <option value="voyager">CartoDB Voyager (lisible)</option>
-      <option value="positron">CartoDB Positron</option>
-      <option value="osm">OpenStreetMap</option>
-    </select>
-    <button onclick="pleinEcranCarte()" class="ml-2 bg-gray-700 hover:bg-gray-800 text-white text-sm px-3 py-1 rounded">
-      🗖 Plein écran
-    </button>
-    <div id="zoomLevel" class="text-sm text-gray-600 mt-2"></div>
-  </div>
-
-  <div id="result" class="text-center font-semibold text-lg mt-2 mb-4 text-blue-700"></div>
-
-  <div class="max-w-xl mx-auto bg-white rounded-lg shadow-lg p-6 space-y-4">
-    <div><label for="nom_depart" class="block font-semibold">Nom de l'aérodrome de départ :</label><input type="text" id="nom_depart" class="w-full p-2 border border-gray-300 rounded"></div>
-    <div><label for="alt_a" class="block font-semibold">Altitude de départ (m) :</label><input type="number" id="alt_a" class="w-full p-2 border border-gray-300 rounded"></div>
-    <div><label for="finesse" class="block font-semibold">Finesse du planeur :</label><input type="number" id="finesse" class="w-full p-2 border border-gray-300 rounded"></div>
-    <div><label for="nom_arrivee" class="block font-semibold">Nom de l'aérodrome d'arrivée :</label><input type="text" id="nom_arrivee" class="w-full p-2 border border-gray-300 rounded"></div>
-    <div><label for="alt_b" class="block font-semibold">Altitude d'arrivée (m) :</label><input type="number" id="alt_b" class="w-full p-2 border border-gray-300 rounded"></div>
-    <div><label for="dist" class="block font-semibold">Distance (km) :</label><input type="number" id="dist" class="w-full p-2 border border-gray-300 rounded"></div>
+  <div class="max-w-xl mx-auto bg-white rounded-lg shadow-lg p-6 space-y-4 mt-6">
+    <div><label class="block font-semibold">Nom de l'aérodrome de départ :</label><input type="text" id="nom_depart" class="w-full p-2 border rounded"></div>
+    <div><label class="block font-semibold">Altitude de départ (m) :</label><input type="number" id="alt_a" class="w-full p-2 border rounded"></div>
+    <div><label class="block font-semibold">Finesse du planeur :</label><input type="number" id="finesse" class="w-full p-2 border rounded"></div>
+    <div><label class="block font-semibold">Nom de l'aérodrome d'arrivée :</label><input type="text" id="nom_arrivee" class="w-full p-2 border rounded"></div>
+    <div><label class="block font-semibold">Altitude d'arrivée (m) :</label><input type="number" id="alt_b" class="w-full p-2 border rounded"></div>
+    <div><label class="block font-semibold">Distance (km) :</label><input type="number" id="dist" class="w-full p-2 border rounded"></div>
     <div><button onclick="calculer()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 w-full rounded">Calculer</button></div>
   </div>
 
+  <div id="result" class="text-center font-semibold text-lg mt-4 text-blue-700"></div>
   <div class="max-w-4xl mx-auto mt-6 bg-white shadow-md p-4 rounded-lg"><canvas id="graphique"></canvas></div>
   <div id="tableau" class="max-w-4xl mx-auto mt-6 bg-white shadow-md p-4 rounded-lg overflow-x-auto"></div>
 
@@ -58,26 +43,8 @@
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
   <script>
-    let map, baseLayer, departMarker, arriveeMarker, departCoords = null, arriveeCoords = null, vectorLine;
+    let map, departMarker, arriveeMarker, departCoords = null, arriveeCoords = null, vectorLine;
     let cercleLayers = [], tooltipLayers = [];
-
-    const tileLayers = {
-      voyager: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap & CartoDB' }),
-      positron: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap contributors' }),
-      osm:     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' })
-    };
-
-    function pleinEcranCarte() {
-      const el = document.getElementById("map");
-      if (el.requestFullscreen) el.requestFullscreen();
-    }
-
-    function switchMapStyle() {
-      const style = document.getElementById("mapStyle").value;
-      if (baseLayer) map.removeLayer(baseLayer);
-      baseLayer = tileLayers[style];
-      baseLayer.addTo(map);
-    }
 
     function clearCircles() {
       cercleLayers.forEach(c => map.removeLayer(c));
@@ -147,34 +114,35 @@
     }
 
     function initMap() {
-      map = L.map('map', { zoom: 6, center: [48.85, 2.35], zoomSnap: 0.25, zoomDelta: 0.25 });
-      baseLayer = tileLayers["stadia"].addTo(map);
-      map.zoomControl.setPosition('topright');
-      map.on("zoomend", () => {
-        document.getElementById("zoomLevel").innerText = "Zoom : " + map.getZoom();
-      });
+      map = L.map('map', { zoom: 6, center: [47, 2], zoomSnap: 0.25 });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
 
-      L.Control.geocoder({ defaultMarkGeocode: false }).on('markgeocode', function(e) {
+      L.Control.geocoder().on('markgeocode', function(e) {
         const center = e.geocode.center;
-        const choix = prompt("1 pour Départ, 2 pour Arrivée");
-        if (choix === "1") {
+        const choix = confirm("Voulez-vous définir ce point comme Départ ?\n\nAppuyez sur 'Annuler' pour définir comme Arrivée.");
+
+        if (choix) {
           if (departMarker) map.removeLayer(departMarker);
           departMarker = L.marker(center).addTo(map);
           departCoords = center;
           document.getElementById('nom_depart').value = e.geocode.name;
           document.getElementById('alt_a').value = Math.round(center.lat * 10);
-        } else if (choix === "2") {
+          clearCircles();
+          addCircles(departCoords, "blue", parseFloat(document.getElementById('alt_a').value));
+        } else {
           if (arriveeMarker) map.removeLayer(arriveeMarker);
           arriveeMarker = L.marker(center).addTo(map);
           arriveeCoords = center;
           document.getElementById('nom_arrivee').value = e.geocode.name;
           document.getElementById('alt_b').value = Math.round(center.lat * 10);
+          clearCircles();
+          addCircles(arriveeCoords, "red", parseFloat(document.getElementById('alt_b').value));
         }
-      }).addTo(map);
-    }
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
+        drawVector();
+      }).addTo(map);
     }
 
     window.onload = initMap;
