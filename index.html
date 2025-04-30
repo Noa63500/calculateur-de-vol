@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Calculateur de Vol</title>
+  <link rel="icon" href="icon-192.png" sizes="192x192" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
@@ -29,7 +30,7 @@
     <div><label class="block font-semibold">Finesse du planeur :</label><input type="number" id="finesse" class="w-full p-2 border rounded"></div>
     <div><label class="block font-semibold">Nom de l'aérodrome d'arrivée :</label><input type="text" id="nom_arrivee" class="w-full p-2 border rounded"></div>
     <div><label class="block font-semibold">Altitude d'arrivée (m) :</label><input type="number" id="alt_b" class="w-full p-2 border rounded"></div>
-    <div><label class="block font-semibold">Distance (km) :</label><input type="number" id="dist" class="w-full p-2 border rounded bg-gray-100" readonly></div>
+    <div><label class="block font-semibold">Distance (km) :</label><input type="number" id="dist" class="w-full p-2 border rounded" readonly></div>
     <div><button onclick="calculer()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 w-full rounded">Calculer</button></div>
   </div>
 
@@ -44,6 +45,7 @@
   <script>
     let map, departMarker, arriveeMarker, departCoords = null, arriveeCoords = null, vectorLine;
     let cercleLayers = [], tooltipLayers = [];
+    let clickCount = 0;
 
     function clearCircles() {
       cercleLayers.forEach(c => map.removeLayer(c));
@@ -66,27 +68,12 @@
       }
     }
 
-    function calculerDistance() {
-      if (!departCoords || !arriveeCoords) return null;
-      const R = 6371;
-      const dLat = (arriveeCoords.lat - departCoords.lat) * Math.PI / 180;
-      const dLng = (arriveeCoords.lng - departCoords.lng) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) ** 2 +
-                Math.cos(departCoords.lat * Math.PI / 180) *
-                Math.cos(arriveeCoords.lat * Math.PI / 180) *
-                Math.sin(dLng / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    }
-
     function drawVector() {
       if (departCoords && arriveeCoords) {
         if (vectorLine) map.removeLayer(vectorLine);
         vectorLine = L.polyline([departCoords, arriveeCoords], { color: 'black', weight: 2, dashArray: '5,5' }).addTo(map);
-        const distance = calculerDistance();
-        if (distance) {
-          document.getElementById('dist').value = distance.toFixed(2);
-        }
+        const d = map.distance(departCoords, arriveeCoords) / 1000;
+        document.getElementById('dist').value = d.toFixed(2);
       }
     }
 
@@ -129,6 +116,28 @@
       drawVector();
     }
 
+    function setDepart(center, name) {
+      if (departMarker) map.removeLayer(departMarker);
+      departMarker = L.marker(center).addTo(map);
+      departCoords = center;
+      document.getElementById('nom_depart').value = name;
+      document.getElementById('alt_a').value = Math.round(center.lat * 10);
+      clearCircles();
+      addCircles(departCoords, "blue", parseFloat(document.getElementById('alt_a').value));
+      drawVector();
+    }
+
+    function setArrivee(center, name) {
+      if (arriveeMarker) map.removeLayer(arriveeMarker);
+      arriveeMarker = L.marker(center).addTo(map);
+      arriveeCoords = center;
+      document.getElementById('nom_arrivee').value = name;
+      document.getElementById('alt_b').value = Math.round(center.lat * 10);
+      clearCircles();
+      addCircles(arriveeCoords, "red", parseFloat(document.getElementById('alt_b').value));
+      drawVector();
+    }
+
     function initMap() {
       map = L.map('map', { zoom: 6, center: [47, 2], zoomSnap: 0.25 });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -138,43 +147,21 @@
       L.Control.geocoder().on('markgeocode', function(e) {
         const center = e.geocode.center;
         const choix = confirm("Voulez-vous définir ce point comme Départ ?\n\nAppuyez sur 'Annuler' pour définir comme Arrivée.");
-
         if (choix) setDepart(center, e.geocode.name);
         else setArrivee(center, e.geocode.name);
       }).addTo(map);
 
       map.on('click', function(e) {
-        setDepart(e.latlng, "Point manuel");
-      });
-
-      map.on('contextmenu', function(e) {
-        setArrivee(e.latlng, "Point manuel");
+        clickCount++;
+        if (clickCount % 2 === 1) setDepart(e.latlng, "Point mobile");
+        else setArrivee(e.latlng, "Point mobile");
       });
     }
 
-    function setDepart(latlng, name = "") {
-      if (departMarker) map.removeLayer(departMarker);
-      departMarker = L.marker(latlng).addTo(map);
-      departCoords = latlng;
-      document.getElementById('nom_depart').value = name;
-      document.getElementById('alt_a').value = Math.round(latlng.lat * 10);
-      clearCircles();
-      addCircles(departCoords, "blue", parseFloat(document.getElementById('alt_a').value));
-      drawVector();
-    }
-
-    function setArrivee(latlng, name = "") {
-      if (arriveeMarker) map.removeLayer(arriveeMarker);
-      arriveeMarker = L.marker(latlng).addTo(map);
-      arriveeCoords = latlng;
-      document.getElementById('nom_arrivee').value = name;
-      document.getElementById('alt_b').value = Math.round(latlng.lat * 10);
-      clearCircles();
-      addCircles(arriveeCoords, "red", parseFloat(document.getElementById('alt_b').value));
-      drawVector();
-    }
-
-    window.onload = initMap;
+    window.onload = () => {
+      clickCount = 0;
+      initMap();
+    };
   </script>
 </body>
 </html>
