@@ -29,7 +29,6 @@
   <div class="text-center mt-3 mb-6">
     <select id="mapStyle" onchange="switchMapStyle()" class="p-2 border rounded text-sm">
       <option value="voyager">CartoDB Voyager (lisible)</option>
-      <option value="stadia" selected>Stadia Alidade Smooth (détaillée)</option>
       <option value="positron">CartoDB Positron</option>
       <option value="osm">OpenStreetMap</option>
     </select>
@@ -64,7 +63,6 @@
 
     const tileLayers = {
       voyager: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap & CartoDB' }),
-      stadia:  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', { attribution: '&copy; Stadia Maps', maxZoom: 20 }),
       positron: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap contributors' }),
       osm:     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' })
     };
