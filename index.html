@@ -8,6 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.css" />
   <style>
     .leaflet-tooltip {
       font-size: 12px;
@@ -32,6 +33,7 @@
     <div><label class="block font-semibold">Altitude d'arrivée (m) :</label><input type="number" id="alt_b" class="w-full p-2 border rounded"></div>
     <div><label class="block font-semibold">Distance (km) :</label><input type="number" id="dist" class="w-full p-2 border rounded" readonly></div>
     <div><button onclick="calculer()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 w-full rounded">Calculer</button></div>
+    <div><button onclick="ajouterTransit()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 w-full rounded">Ajouter un aérodrome de transit</button></div>
   </div>
 
   <div id="result" class="text-center font-semibold text-lg mt-4 text-blue-700"></div>
@@ -41,17 +43,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.js"></script>
 
   <script>
-    let map, departMarker, arriveeMarker, departCoords = null, arriveeCoords = null, vectorLine;
-    let cercleLayers = [], tooltipLayers = [];
+    let map, departMarker, arriveeMarker, departCoords = null, arriveeCoords = null, vectorLine, basculMarker;
+    let cercleLayers = [], tooltipLayers = [], transitMarkers = [], transitCircles = [];
     let clickCount = 0;
+    let ajoutTransitMode = false;
 
     function clearCircles() {
-      cercleLayers.forEach(c => map.removeLayer(c));
-      tooltipLayers.forEach(t => map.removeLayer(t));
-      cercleLayers = [];
-      tooltipLayers = [];
+      [...cercleLayers, ...tooltipLayers, ...transitCircles].forEach(layer => map.removeLayer(layer));
+      cercleLayers = []; tooltipLayers = []; transitCircles = [];
     }
 
     function addCircles(center, color, baseAlt) {
@@ -61,10 +63,30 @@
         const radius = i * 5000;
         const alt = baseAlt + ((radius / 1000) * 1000 / finesse) + 360;
         const circle = L.circle(center, { radius, color, dashArray: i % 2 === 0 ? "5,5" : null, fillOpacity: 0 }).addTo(map);
-        cercleLayers.push(circle);
         const label = L.tooltip({ permanent: true, direction: 'right', className: "leaflet-tooltip" })
-          .setLatLng(L.latLng(center.lat + radius / 111320, center.lng)).setContent(`~${Math.round(alt)} m`).addTo(map);
+          .setLatLng(L.latLng(center.lat + radius / 111320, center.lng))
+          .setContent(`~${Math.round(alt)} m`).addTo(map);
+        cercleLayers.push(circle);
         tooltipLayers.push(label);
+      }
+    }
+
+    function addTransitCircles(center, alt) {
+      const finesse = parseFloat(document.getElementById("finesse").value);
+      if (isNaN(finesse)) return;
+      for (let i = 1; i <= 5; i++) {
+        const radius = i * 5000;
+        const altLabel = alt + ((radius / 1000) * 1000 / finesse) + 360;
+        const circle = L.circle(center, {
+          radius,
+          color: 'orange',
+          dashArray: i % 2 === 0 ? "5,5" : null,
+          fillOpacity: 0
+        }).addTo(map);
+        const label = L.tooltip({ permanent: true, direction: 'right', className: "leaflet-tooltip" })
+          .setLatLng(L.latLng(center.lat + radius / 111320, center.lng))
+          .setContent(`~${Math.round(altLabel)} m`).addTo(map);
+        transitCircles.push(circle, label);
       }
     }
 
@@ -72,8 +94,18 @@
       if (departCoords && arriveeCoords) {
         if (vectorLine) map.removeLayer(vectorLine);
         vectorLine = L.polyline([departCoords, arriveeCoords], { color: 'black', weight: 2, dashArray: '5,5' }).addTo(map);
+
         const d = map.distance(departCoords, arriveeCoords) / 1000;
         document.getElementById('dist').value = d.toFixed(2);
+
+        const pt_bascul = (d / 2) + (Math.abs(parseFloat(document.getElementById('alt_a').value) - parseFloat(document.getElementById('alt_b').value))) * (parseFloat(document.getElementById('finesse').value) / 2000);
+        const alt_bascul = (pt_bascul * 1000) / parseFloat(document.getElementById('finesse').value) + parseFloat(document.getElementById('alt_a').value) + 360;
+
+        const latMid = (departCoords.lat + arriveeCoords.lat) / 2;
+        const lngMid = (departCoords.lng + arriveeCoords.lng) / 2;
+        if (basculMarker) map.removeLayer(basculMarker);
+        basculMarker = L.marker([latMid, lngMid]).addTo(map)
+          .bindPopup(`Point de bascule : ${pt_bascul.toFixed(2)} km<br>Altitude : ${alt_bascul.toFixed(2)} m`).openPopup();
       }
     }
 
@@ -113,7 +145,49 @@
       clearCircles();
       if (departCoords) addCircles(departCoords, "blue", alt_a);
       if (arriveeCoords) addCircles(arriveeCoords, "red", alt_b);
+      transitMarkers.forEach(t => addTransitCircles(t.getLatLng(), t.altitude));
       drawVector();
+    }
+
+    function ajouterTransit() {
+      alert("Cliquez sur la carte pour ajouter un aérodrome de transit.");
+      ajoutTransitMode = true;
+    }
+
+    function initMap() {
+      map = L.map('map', {
+        center: [47, 2],
+        zoom: 6,
+        fullscreenControl: true,
+        zoomSnap: 0.25
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      L.Control.geocoder().on('markgeocode', function(e) {
+        const center = e.geocode.center;
+        const choix = confirm("Définir ce point comme Départ ?\nAnnuler = Arrivée.");
+        if (choix) setDepart(center, e.geocode.name);
+        else setArrivee(center, e.geocode.name);
+      }).addTo(map);
+
+      map.on('click', function(e) {
+        if (ajoutTransitMode) {
+          const name = prompt("Nom de l'aérodrome de transit :", "Transit " + (transitMarkers.length + 1));
+          const alt = Math.round(e.latlng.lat * 10); // estimation simple
+          const marker = L.marker(e.latlng).addTo(map).bindPopup(`${name} - Alt: ${alt} m`);
+          marker.altitude = alt;
+          transitMarkers.push(marker);
+          ajoutTransitMode = false;
+          addTransitCircles(e.latlng, alt);
+        } else {
+          clickCount++;
+          if (clickCount % 2 === 1) setDepart(e.latlng, "Point mobile");
+          else setArrivee(e.latlng, "Point mobile");
+        }
+      });
     }
 
     function setDepart(center, name) {
@@ -136,26 +210,6 @@
       clearCircles();
       addCircles(arriveeCoords, "red", parseFloat(document.getElementById('alt_b').value));
       drawVector();
-    }
-
-    function initMap() {
-      map = L.map('map', { zoom: 6, center: [47, 2], zoomSnap: 0.25 });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-
-      L.Control.geocoder().on('markgeocode', function(e) {
-        const center = e.geocode.center;
-        const choix = confirm("Voulez-vous définir ce point comme Départ ?\n\nAppuyez sur 'Annuler' pour définir comme Arrivée.");
-        if (choix) setDepart(center, e.geocode.name);
-        else setArrivee(center, e.geocode.name);
-      }).addTo(map);
-
-      map.on('click', function(e) {
-        clickCount++;
-        if (clickCount % 2 === 1) setDepart(e.latlng, "Point mobile");
-        else setArrivee(e.latlng, "Point mobile");
-      });
     }
 
     window.onload = () => {
